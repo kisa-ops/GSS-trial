@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en" prefix="og: https://ogp.me/ns#">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="index, follow, max-image-preview:large">
+
+    <!-- ══ SEO METADATA ══ -->
+    <title>Installation &amp; Deployment Guide | GoSecureShare Enterprise</title>
+    <meta name="description" content="Step-by-step guide to installing and deploying GoSecureShare on Linux using the automated 1-command installer or Docker Compose. Covers prerequisites, SSL termination, and Day-2 operations.">
+    <meta name="keywords" content="install GoSecureShare, self-hosted secret sharing install, deploy docker compose secret sharing, GHCR read:packages docker pull, on-premise vault installation, GoSecureShare setup guide">
+    <link rel="canonical" href="https://gosecureshare.com/install.html">
+
+    <!-- ══ FAVICONS ══ -->
+    <link rel="icon" type="image/svg+xml" href="assets/logo/favicon/favicon.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/logo/favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="assets/logo/favicon/favicon-16x16.png">
+    <link rel="shortcut icon" href="assets/logo/favicon/favicon-32x32.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/logo/favicon/apple-touch-icon.png">
+    <meta name="theme-color" content="#ffffff">
+
+    <!-- ══ OPEN GRAPH ══ -->
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://gosecureshare.com/install.html">
+    <meta property="og:title" content="GoSecureShare — First-Time Installation &amp; Setup Guide">
+    <meta property="og:description" content="Complete instructions for deploying GoSecureShare Enterprise on Linux via 1-line automated installer or manual Docker Compose.">
+    <meta property="og:image" content="https://gosecureshare.com/assets/logo/favicon/og-image.png">
+    <meta property="og:site_name" content="GoSecureShare">
+
+    <!-- ══ FONTS & ICONS ══ -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..24,400..700,0,0" />
+
+    <!-- ══ TAILWIND CSS ══ -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- ══ ENTERPRISE WHITE STYLESHEET ══ -->
+    <link rel="stylesheet" href="assets/css/landing.css">
+
+    <style>
+        .doc-step-number {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #ecfdf5;
+            color: #059669;
+            border: 1px solid #a7f3d0;
+            font-weight: 800;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+        .code-container {
+            background: #0f172a;
+            border: 1px solid #1e293b;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0 16px;
+        }
+        .code-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 14px;
+            background: rgba(255, 255, 255, 0.04);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            font-size: 11px;
+            font-family: 'JetBrains Mono', monospace;
+            color: #94a3b8;
+        }
+        .code-body {
+            padding: 12px 16px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: #34d399;
+            line-height: 1.6;
+            overflow-x: auto;
+            white-space: pre;
+        }
+        .copy-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #cbd5e1;
+            background: rgba(255, 255, 255, 0.08);
+            padding: 3px 8px;
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .copy-btn:hover {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.25);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased selection:bg-emerald-100 selection:text-emerald-900">
+
+<!-- ═══════════════ NAVIGATION HEADER ═══════════════ -->
+<header class="site-header sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+        <!-- Consistent Brand Logo (No 'micro mini' or 'enterprise' badge) -->
+        <a href="index.html" class="flex items-center gap-2.5 flex-shrink-0" aria-label="GoSecureShare Home">
+            <img src="assets/logo/gss-shield-light.svg" alt="GoSecureShare Logo" class="h-8 w-8 rounded-md" width="32" height="32">
+            <span class="brand-name text-base font-black tracking-tight"><span class="text-slate-900">GoSecure</span><span class="text-emerald-600">Share</span></span>
+        </a>
+
+        <!-- Consistent Desktop Navigation Links -->
+        <nav class="hidden lg:flex items-center gap-6 text-xs font-medium text-slate-600">
+            <a href="index.html" class="hover:text-slate-900 transition-colors flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-[16px]">home</span> Home
+            </a>
+            <a href="enterprise.html" class="hover:text-slate-900 transition-colors">Enterprise</a>
+            <a href="enterprise.html#features" class="hover:text-slate-900 transition-colors">Features</a>
+            <a href="enterprise.html#how-it-works" class="hover:text-slate-900 transition-colors">Architecture</a>
+            <a href="enterprise.html#governance" class="hover:text-slate-900 transition-colors">Governance</a>
+            <a href="enterprise.html#pricing" class="hover:text-slate-900 transition-colors">Pricing ($499/yr)</a>
+            <a href="install.html" class="text-emerald-700 font-bold border-b-2 border-emerald-600 pb-0.5 flex items-center gap-1">
+                <span class="material-symbols-outlined text-[15px]">menu_book</span> Install Guide
+            </a>
+            <a href="enterprise.html#faq" class="hover:text-slate-900 transition-colors">FAQ</a>
+        </nav>
+
+        <!-- Consistent Header Actions: No GitHub, No Quick Install -->
+                <div class="flex items-center gap-2">
+            <button type="button" id="mobileMenuBtn" class="lg:hidden p-2 rounded-md hover:bg-slate-100 text-slate-600 focus:outline-none" aria-label="Toggle navigation menu">
+                <span id="mobileMenuIcon" class="material-symbols-outlined text-[22px]">menu</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Mobile Navigation Dropdown Menu -->
+    <div id="mobileNav" class="hidden lg:hidden border-t border-slate-200 bg-white/98 px-4 py-3 space-y-1 text-xs font-medium text-slate-700 shadow-lg">
+        <a href="index.html" class="flex items-center gap-2 py-2 px-2.5 rounded-md hover:bg-slate-100">
+            <span class="material-symbols-outlined text-[16px]">home</span> Home
+        </a>
+        <a href="enterprise.html" class="flex items-center gap-2 py-2 px-2.5 rounded-md hover:bg-slate-100">
+            <span class="material-symbols-outlined text-[16px]">domain</span> Enterprise
+        </a>
+        <a href="enterprise.html#features" class="flex items-center gap-2 py-2 px-2.5 rounded-md hover:bg-slate-100">
+            <span class="material-symbols-outlined text-[16px]">verified</span> Features
+        </a>
+        <a href="enterprise.html#how-it-works" class="flex items-center gap-2 py-2 px-2.5 rounded-md hover:bg-slate-100">
+            <span class="material-symbols-outlined text-[16px]">account_tree</span> Architecture
+        </a>
+        <a href="enterprise.html#governance" class="flex items-center gap-2 py-2 px-2.5 rounded-md hover:bg-slate-100">
+            <span class="material-symbols-outlined text-[16px]">policy</span> Governance
+        </a>
+        <a href="enterprise.html#pricing" class="flex items-center gap-2 py-2 px-2.5 rounded-md hover:bg-slate-100">
+            <span class="material-symbols-outlined text-[16px]">payments</span> Pricing ($499/yr)
+        </a>
+        <a href="install.html" class="flex items-center gap-2 py-2 px-2.5 rounded-md bg-emerald-50 text-emerald-700 font-bold">
+            <span class="material-symbols-outlined text-[16px]">menu_book</span> Install Guide
+        </a>
+        <a href="enterprise.html#faq" class="flex items-center gap-2 py-2 px-2.5 rounded-md hover:bg-slate-100">
+            <span class="material-symbols-outlined text-[16px]">help</span> FAQ
+        </a>
+        <div class="pt-2 border-t border-slate-100 flex flex-col gap-2">
+            <a href="install.html" class="text-center py-2 rounded-md bg-slate-100 font-semibold text-slate-700">Install Guide</a>
+            <a href="mailto:contact.us@gosecureshare.com?subject=Enterprise%20Trial%20Request" class="text-center py-2 rounded-md bg-emerald-600 text-white font-semibold">Free 30-Day Trial</a>
+        </div>
+    </div>
+</header>
+
+<!-- ═══════════════ BREADCRUMBS ═══════════════ -->
+<div class="max-w-4xl mx-auto px-4 sm:px-6 pt-6 pb-2">
+    <nav class="flex items-center gap-2 text-xs text-slate-500">
+        <a href="index.html" class="hover:text-slate-900 transition-colors">Home</a>
+        <span>/</span>
+        <a href="enterprise.html" class="hover:text-slate-900 transition-colors">Enterprise</a>
+        <span>/</span>
+        <span class="text-slate-900 font-medium">Installation &amp; Deployment Guide</span>
+    </nav>
+</div>
+
+<!-- ═══════════════ HERO TITLE ═══════════════ -->
+<section class="max-w-4xl mx-auto px-4 sm:px-6 pt-4 pb-8">
+    <div class="flex items-center gap-2 mb-3">
+        <span class="tag-badge">Deployment Guide</span>
+        <span class="text-xs text-slate-500">&bull; Production-Ready &bull; Ubuntu 22.04 / 24.04 LTS</span>
+    </div>
+
+    <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mb-3">
+        First-Time Installation &amp; Setup Guide
+    </h1>
+    <p class="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-2xl">
+        Deploy GoSecureShare on your own private infrastructure. Choose between the recommended <strong>Automated 1-Command Installer</strong> (&lt;5 minutes) or manual Docker Compose configuration.
+    </p>
+
+    <!-- Quick Specs Bento -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
+        <div class="bento-card p-3 text-center">
+            <div class="text-[11px] font-semibold text-slate-400 uppercase">OS Target</div>
+            <div class="text-xs font-bold text-slate-900 mt-0.5">Ubuntu 22/24 LTS</div>
+        </div>
+        <div class="bento-card p-3 text-center">
+            <div class="text-[11px] font-semibold text-slate-400 uppercase">Min Compute</div>
+            <div class="text-xs font-bold text-slate-900 mt-0.5">1 vCPU &bull; 1 GB RAM</div>
+        </div>
+        <div class="bento-card p-3 text-center">
+            <div class="text-[11px] font-semibold text-slate-400 uppercase">Deployment</div>
+            <div class="text-xs font-bold text-slate-900 mt-0.5">Docker Compose</div>
+        </div>
+        <div class="bento-card p-3 text-center">
+            <div class="text-[11px] font-semibold text-slate-400 uppercase">Registry</div>
+            <div class="text-xs font-bold text-slate-900 mt-0.5">GitHub GHCR</div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════════════ MAIN GUIDE CONTENT ═══════════════ -->
+<main class="max-w-4xl mx-auto px-4 sm:px-6 pb-20 space-y-10">
+
+    <!-- ══ METHOD 1: AUTOMATED 1-COMMAND INSTALLER (RECOMMENDED) ══ -->
+    <section class="bento-card p-6 border-emerald-300 bg-emerald-50/20 shadow-md">
+        <div class="flex items-center gap-2 mb-2">
+            <span class="w-6 h-6 rounded-full bg-emerald-600 text-white font-bold text-xs flex items-center justify-center">1</span>
+            <h2 class="text-base sm:text-lg font-bold text-slate-900">Method 1 (Recommended): Automated 1-Line Installer</h2>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 uppercase tracking-wide">5-Minute Setup</span>
+        </div>
+        <p class="text-xs sm:text-sm text-slate-600 mb-4 leading-relaxed">
+            Run this single shell command on a fresh Ubuntu 22.04 or 24.04 LTS server. The script handles everything end-to-end without manual configuration:
+        </p>
+
+        <div class="code-container">
+            <div class="code-header">
+                <span>bash &mdash; run as root or sudo</span>
+                <button type="button" class="copy-btn" onclick="copyCode(this, 'curl -fsSL https://raw.githubusercontent.com/kisa-ops/GoSecureShare/main/install.sh | bash')">
+                    <span class="material-symbols-outlined text-[13px]">content_copy</span>
+                    <span>Copy</span>
+                </button>
+            </div>
+            <div class="code-body">curl -fsSL https://raw.githubusercontent.com/kisa-ops/GoSecureShare/main/install.sh | bash</div>
+        </div>
+
+        <div class="space-y-2 mt-4 text-xs text-slate-700">
+            <div class="font-bold text-slate-900 text-xs uppercase tracking-wider mb-1">What the Automated Installer Performs:</div>
+            <div class="flex items-start gap-2"><span class="material-symbols-outlined text-emerald-600 text-sm">check_circle</span> <span>Checks system prerequisites (CPU, RAM, disk space) and installs Docker Engine &amp; Docker Compose if not present.</span></div>
+            <div class="flex items-start gap-2"><span class="material-symbols-outlined text-emerald-600 text-sm">check_circle</span> <span>Creates the deployment directory structure under <code>/opt/gosecureshare/</code>.</span></div>
+            <div class="flex items-start gap-2"><span class="material-symbols-outlined text-emerald-600 text-sm">check_circle</span> <span>Generates cryptographic secrets and AES-256 KMS master encryption keys using <code>openssl rand -base64 32</code>.</span></div>
+            <div class="flex items-start gap-2"><span class="material-symbols-outlined text-emerald-600 text-sm">check_circle</span> <span>Configures Nginx reverse proxy and provisions Let's Encrypt TLS certificates for your domain automatically.</span></div>
+            <div class="flex items-start gap-2"><span class="material-symbols-outlined text-emerald-600 text-sm">check_circle</span> <span>Pulls GHCR container images, seeds the database, runs migrations, and verifies service health checks.</span></div>
+        </div>
+    </section>
+
+    <!-- ══ METHOD 2: MANUAL DOCKER COMPOSE DEPLOYMENT ══ -->
+    <section class="space-y-6">
+        <div class="border-b border-slate-200 pb-3">
+            <div class="flex items-center gap-2">
+                <span class="w-6 h-6 rounded-full bg-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center">2</span>
+                <h2 class="text-base sm:text-lg font-bold text-slate-900">Method 2: Manual Advanced Docker Compose Deployment</h2>
+            </div>
+            <p class="text-xs text-slate-600 mt-1">For custom DevOps pipelines, Kubernetes migrations, or internal registries.</p>
+        </div>
+
+        <!-- Step 1: GHCR Token -->
+        <div class="bento-card p-5">
+            <div class="flex items-center gap-2 mb-2">
+                <span class="doc-step-number">A</span>
+                <h3 class="text-sm font-bold text-slate-900">Authenticate to GitHub Container Registry (GHCR)</h3>
+            </div>
+            <p class="text-xs text-slate-600 mb-3 leading-relaxed">
+                GoSecureShare Enterprise container images are hosted on GHCR. Authenticate your Docker daemon using your GitHub Personal Access Token (PAT) with the <code>read:packages</code> scope:
+            </p>
+
+            <div class="code-container">
+                <div class="code-header">
+                    <span>bash</span>
+                    <button type="button" class="copy-btn" onclick="copyCode(this, 'echo $CR_PAT | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin')">
+                        <span class="material-symbols-outlined text-[13px]">content_copy</span>
+                        <span>Copy</span>
+                    </button>
+                </div>
+                <div class="code-body">echo $CR_PAT | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin</div>
+            </div>
+        </div>
+
+        <!-- Step 2: Deployment Directory & Environment -->
+        <div class="bento-card p-5">
+            <div class="flex items-center gap-2 mb-2">
+                <span class="doc-step-number">B</span>
+                <h3 class="text-sm font-bold text-slate-900">Create Directory &amp; Environment File (.env)</h3>
+            </div>
+            <p class="text-xs text-slate-600 mb-3 leading-relaxed">
+                Create a dedicated deployment folder and create the <code>.env</code> file containing your domain, database passwords, and KMS master key:
+            </p>
+
+            <div class="code-container">
+                <div class="code-header">
+                    <span>bash</span>
+                    <button type="button" class="copy-btn" onclick="copyCode(this, 'git clone https://github.com/kisa-ops/GoSecureShare.git /opt/gosecureshare && cd /opt/gosecureshare')">
+                        <span class="material-symbols-outlined text-[13px]">content_copy</span>
+                        <span>Copy</span>
+                    </button>
+                </div>
+                <div class="code-body">git clone https://github.com/kisa-ops/GoSecureShare.git /opt/gosecureshare && cd /opt/gosecureshare</div>
+            </div>
+
+            <div class="code-container">
+                <div class="code-header">
+                    <span>.env template</span>
+                    <button type="button" class="copy-btn" onclick="copyCode(this, 'APP_ENV=production
+APP_DOMAIN=vault.yourcompany.com
+POSTGRES_DB=gosecureshare
+POSTGRES_USER=gss_user
+POSTGRES_PASSWORD=$(openssl rand -base64 24)
+MASTER_KMS_KEY=$(openssl rand -base64 32)
+SESSION_SECRET=$(openssl rand -base64 32)')">
+                        <span class="material-symbols-outlined text-[13px]">content_copy</span>
+                        <span>Copy</span>
+                    </button>
+                </div>
+                <div class="code-body">APP_ENV=production
+APP_DOMAIN=vault.yourcompany.com
+POSTGRES_DB=gosecureshare
+POSTGRES_USER=gss_user
+POSTGRES_PASSWORD=&lt;generate-with-openssl&gt;
+MASTER_KMS_KEY=&lt;generate-32-byte-base64&gt;
+SESSION_SECRET=&lt;generate-32-byte-base64&gt;</div>
+            </div>
+        </div>
+
+        <!-- Step 3: Launch Stack -->
+        <div class="bento-card p-5">
+            <div class="flex items-center gap-2 mb-2">
+                <span class="doc-step-number">C</span>
+                <h3 class="text-sm font-bold text-slate-900">Pull Images &amp; Start Services</h3>
+            </div>
+            <p class="text-xs text-slate-600 mb-3 leading-relaxed">
+                Launch the PostgreSQL database, backend API, frontend web application, and Nginx reverse proxy containers:
+            </p>
+
+            <div class="code-container">
+                <div class="code-header">
+                    <span>bash</span>
+                    <button type="button" class="copy-btn" onclick="copyCode(this, 'docker compose pull && docker compose up -d')">
+                        <span class="material-symbols-outlined text-[13px]">content_copy</span>
+                        <span>Copy</span>
+                    </button>
+                </div>
+                <div class="code-body">docker compose pull && docker compose up -d</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ══ DAY-2 OPERATIONS & MAINTENANCE ══ -->
+    <section class="bento-card p-6">
+        <h2 class="text-base font-bold text-slate-900 mb-3 flex items-center gap-2">
+            <span class="material-symbols-outlined text-slate-600 text-lg">build</span>
+            <span>Day-2 Operations &amp; Maintenance</span>
+        </h2>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+            <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                <div class="font-bold text-slate-900 mb-1">Service Health Check</div>
+                <p class="text-slate-600 mb-2">Verify that all 4 containers are reporting healthy status:</p>
+                <code class="block font-mono text-[11px] bg-slate-900 text-emerald-400 p-2 rounded">docker compose ps</code>
+            </div>
+
+            <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                <div class="font-bold text-slate-900 mb-1">Tail Live Logs</div>
+                <p class="text-slate-600 mb-2">Inspect real-time authentication and secret API events:</p>
+                <code class="block font-mono text-[11px] bg-slate-900 text-emerald-400 p-2 rounded">docker compose logs -f backend</code>
+            </div>
+
+            <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                <div class="font-bold text-slate-900 mb-1">Automated Backup</div>
+                <p class="text-slate-600 mb-2">Take an encrypted snapshot of the PostgreSQL database:</p>
+                <code class="block font-mono text-[11px] bg-slate-900 text-emerald-400 p-2 rounded">docker compose exec -T db pg_dump -U gss_user gosecureshare &gt; backup.sql</code>
+            </div>
+
+            <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                <div class="font-bold text-slate-900 mb-1">One-Click Upgrade</div>
+                <p class="text-slate-600 mb-2">Pull the latest GHCR enterprise container release and restart:</p>
+                <code class="block font-mono text-[11px] bg-slate-900 text-emerald-400 p-2 rounded">docker compose pull &amp;&amp; docker compose up -d</code>
+            </div>
+        </div>
+    </section>
+
+    <!-- ══ HELP & SUPPORT CALLOUT ══ -->
+    <div class="p-6 bg-slate-100 border border-slate-200 rounded-xl text-center">
+        <h3 class="text-sm font-bold text-slate-900 mb-1">Need Assisted Enterprise Onboarding?</h3>
+        <p class="text-xs text-slate-600 max-w-lg mx-auto mb-4">
+            Our engineering team can assist your security or infrastructure team with Active Directory SSO configuration, firewall rules, and custom domain setup.
+        </p>
+        <div class="flex items-center justify-center gap-3">
+            <a href="mailto:contact.us@gosecureshare.com?subject=Installation%20Support%20Request" class="inline-flex items-center gap-1 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs transition-colors">
+                <span>Contact Engineering Support</span>
+            </a>
+            <a href="enterprise.html" class="inline-flex items-center gap-1 px-4 py-2 rounded-lg bg-white border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition-colors">
+                <span>Back to Platform Overview</span>
+            </a>
+        </div>
+    </div>
+</main>
+
+<!-- ═══════════════ FOOTER ═══════════════ -->
+<footer class="border-t border-slate-200 bg-white py-8 text-xs text-slate-500">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+        <div class="flex items-center gap-2.5">
+            <img src="assets/logo/gss-shield-light.svg" alt="GoSecureShare" class="h-6 w-6" width="24" height="24">
+            <span class="brand-name text-sm font-bold"><span class="text-slate-900">GoSecure</span><span class="text-emerald-600">Share</span></span>
+        </div>
+        <p class="text-xs text-slate-500">&copy; 2026 GoSecureShare. All rights reserved. Self-Hosted Zero-Knowledge Secret Sharing.</p>
+    </div>
+</footer>
+
+<script>
+/* ── Mobile Menu Toggle ── */
+// Mobile Menu Toggle
+const mobileBtn = document.getElementById('mobileMenuBtn');
+const mobileNav = document.getElementById('mobileNav');
+const mobileIcon = document.getElementById('mobileMenuIcon');
+if (mobileBtn && mobileNav) {
+    mobileBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isHidden = mobileNav.classList.toggle('hidden');
+        if (mobileIcon) mobileIcon.textContent = isHidden ? 'menu' : 'close';
+    });
+    mobileNav.querySelectorAll('a').forEach(link => {
+        link.addEventListener('click', () => {
+            mobileNav.classList.add('hidden');
+            if (mobileIcon) mobileIcon.textContent = 'menu';
+        });
+    });
+    document.addEventListener('click', (e) => {
+        if (!mobileNav.contains(e.target) && !mobileBtn.contains(e.target)) {
+            mobileNav.classList.add('hidden');
+            if (mobileIcon) mobileIcon.textContent = 'menu';
+        }
+    });
+}
+
+function copyCode(btn, text) {
+    navigator.clipboard.writeText(text).then(()=>{
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<span class="material-symbols-outlined text-[13px]">check</span><span>Copied!</span>';
+        setTimeout(()=>{ btn.innerHTML = orig; }, 2000);
+    });
+}
+</script>
+
+</body>
+</html>
