@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================================
 # 04-auth-pull.sh — Container image pulling for Trial Package (zero-credential)
-# Sourced by install.sh — do not execute directly.
 # =============================================================================
-
 echo ""
 SERVER_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
 SERVER_IP=${SERVER_IP:-127.0.0.1}
@@ -40,13 +38,7 @@ echo ""
 
 if [[ ${#PULL_FAILED[@]} -gt 0 ]]; then
   echo -e "${RED}[ERROR]${RESET} Failed to pull container images:"
-  printf '         - %s
-' "${PULL_FAILED[@]}"
-  echo ""
-  echo -e "  ${YELLOW}Troubleshooting:${RESET}"
-  echo -e "  1. Verify network access to ghcr.io"
-  echo -e "  2. For private container registries, provide optional credentials:"
-  echo -e "     GHCR_USERNAME=user GHCR_TOKEN=pat sudo -E ./install.sh"
+  printf '         - %s\n' "${PULL_FAILED[@]}"
   exit 1
 fi
 success "All images ready (tag: ${VERSION})."

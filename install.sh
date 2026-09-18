@@ -14,23 +14,19 @@
 # PORT DEFAULTS:
 #   Platform  (internal admin UI):  HTTP 8181  →  HTTPS 443 (behind host Nginx)
 #   Recipient (external share UI):  HTTP 80    →  HTTPS 443 (behind host Nginx)
-#
-# VERSION PINNING:
-#   Defaults to latest stable pinned release tag. Override:
-#     GSS_VERSION=2.1.33 sudo ./install.sh
 # =============================================================================
 set -euo pipefail
 
 _SCRIPT_DIR_EARLY="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 _GLOBALS_EARLY="${_SCRIPT_DIR_EARLY}/lib/00-globals.sh"
 if [[ -f "${_GLOBALS_EARLY}" ]]; then
-  INSTALLER_VERSION=$(grep -E '^INSTALLER_VERSION=' "${_GLOBALS_EARLY}"     | head -1 | cut -d'"' -f2 || echo "1.2.0")
+  INSTALLER_VERSION=$(grep -E '^INSTALLER_VERSION=' "${_GLOBALS_EARLY}" | head -1 | cut -d'"' -f2 || echo "1.2.0")
 else
   INSTALLER_VERSION="1.2.0-trial"
 fi
 
-RED=$'[0;31m'; GREEN=$'[0;32m'; YELLOW=$'[1;33m'
-CYAN=$'[0;36m'; BOLD=$'[1m'; RESET=$'[0m'
+RED=$'\033[0;31m'; GREEN=$'\033[0;32m'; YELLOW=$'\033[1;33m'
+CYAN=$'\033[0;36m'; BOLD=$'\033[1m'; RESET=$'\033[0m'
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LIB_DIR="${SCRIPT_DIR}/lib"
@@ -94,7 +90,10 @@ if [[ "${_needs_bootstrap}" == "true" ]]; then
   [[ -n "${GHCR_TOKEN:-}" ]] && _curl_auth=(-H "Authorization: Bearer ${GHCR_TOKEN}")
   _bootstrap_failed=false
   for _f in "${LIB_FILES[@]}"; do
-    if curl -fsSL --connect-timeout 10         "${_curl_auth[@]}"         "${LIB_BASE_URL}/${_f}"         -o "${LIB_DIR}/${_f}" 2>/dev/null; then
+    if curl -fsSL --connect-timeout 10 \
+        "${_curl_auth[@]}" \
+        "${LIB_BASE_URL}/${_f}" \
+        -o "${LIB_DIR}/${_f}" 2>/dev/null; then
       echo -e "${GREEN}[OK]${RESET}    Fetched: lib/${_f}"
     else
       echo -e "${RED}[ERROR]${RESET} Failed to fetch: lib/${_f}" >&2
@@ -114,7 +113,7 @@ if [[ "${_needs_bootstrap}" == "true" ]]; then
 fi
 
 if [[ -f "${LIB_DIR}/00-globals.sh" ]]; then
-  INSTALLER_VERSION=$(grep -E '^INSTALLER_VERSION=' "${LIB_DIR}/00-globals.sh"     | head -1 | cut -d'"' -f2 || echo "1.2.0")
+  INSTALLER_VERSION=$(grep -E '^INSTALLER_VERSION=' "${LIB_DIR}/00-globals.sh" | head -1 | cut -d'"' -f2 || echo "1.2.0")
 fi
 
 for _f in "${LIB_FILES[@]}"; do

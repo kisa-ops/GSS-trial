@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================================
-# 03-version.sh — Resolve image version and build tagged image names
-# Sourced by install.sh — do not execute directly.
+# 03-version.sh — Resolve image version for Trial Package
 # =============================================================================
-
 info "Resolving image version..."
 
 _resolve_version() {
@@ -13,7 +11,8 @@ _resolve_version() {
   fi
   local api_url="https://api.github.com/repos/${GITHUB_REPO}/releases/latest"
   local tag
-  tag=$(curl -fsSL --connect-timeout 6     -H "Accept: application/vnd.github+json"     "${api_url}" 2>/dev/null     | grep '"tag_name"'     | sed 's/.*"tag_name": "\(.*\)".*//'     | tr -d '[:space:]'     | sed 's/^v//' || echo "")
+  tag=$(curl -fsSL --connect-timeout 6 -H "Accept: application/vnd.github+json" "${api_url}" 2>/dev/null \
+    | grep '"tag_name"' | sed 's/.*"tag_name": "\(.*\)".*/\1/' | tr -d '[:space:]' | sed 's/^v//' || echo "")
   if [[ -n "${tag}" && "${tag}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     echo "${tag}"
   else
@@ -23,12 +22,7 @@ _resolve_version() {
 
 VERSION="$(_resolve_version)"
 success "Installing version: ${VERSION} (Evaluation Edition)"
-
-if [[ "${VERSION}" == "latest" ]]; then
-  GIT_REF="main"
-else
-  GIT_REF="v${VERSION}"
-fi
+GIT_REF="v${VERSION}"
 
 TAGGED_API_PLATFORM="${IMAGE_API_PLATFORM}:${VERSION}"
 TAGGED_API_RECIPIENT="${IMAGE_API_RECIPIENT}:${VERSION}"

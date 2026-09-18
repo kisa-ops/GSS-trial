@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================================
 # 05-db-files.sh — Resolve and copy DB bootstrap files for Trial
-# Sourced by install.sh — do not execute directly.
 # =============================================================================
-
 echo ""
 info "Creating installation directory: ${INSTALL_DIR}"
 mkdir -p "${INSTALL_DIR}/db" "${INSTALL_DIR}/nginx"
@@ -14,10 +12,8 @@ info "── DB Files ───────────────────�
 
 if [[ -n "${GSS_DB_DIR:-}" ]]; then
   LOCAL_DB_DIR="${GSS_DB_DIR}"
-  info "Using GSS_DB_DIR override: ${LOCAL_DB_DIR}"
 elif [[ -f "${SCRIPT_DIR}/db/init.sql" && -f "${SCRIPT_DIR}/db/docker-migrate.sh" ]]; then
   LOCAL_DB_DIR="${SCRIPT_DIR}/db"
-  info "Found local db/ folder next to install.sh: ${LOCAL_DB_DIR}"
 else
   LOCAL_DB_DIR=""
 fi
@@ -43,10 +39,6 @@ _resolve_db_file() {
   warn "  Could not fetch: ${file}"
   return 1
 }
-
-if [[ -z "${LOCAL_DB_DIR}" ]]; then
-  info "No local db/ folder found — fetching from GSS-trial repository..."
-fi
 
 DB_FAILED=()
 for _dbf in init.sql docker-migrate.sh; do
