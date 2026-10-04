@@ -68,6 +68,15 @@ EOF
 chmod 600 "${INSTALL_DIR}/.env"
 success ".env written and secured (chmod 600)."
 
+if [[ -n "${GHCR_TOKEN:-}" ]]; then
+  cat > "${INSTALL_DIR}/.ghcr_creds" <<EOF
+GHCR_USERNAME="${GHCR_USERNAME:-}"
+GHCR_TOKEN="${GHCR_TOKEN:-}"
+EOF
+  chmod 600 "${INSTALL_DIR}/.ghcr_creds"
+  success "GHCR credentials saved to ${INSTALL_DIR}/.ghcr_creds (chmod 600)."
+fi
+
 # -----------------------------------------------------------------------------
 # docker-compose.yml
 # -----------------------------------------------------------------------------
@@ -83,7 +92,7 @@ services:
       POSTGRES_USER: \${POSTGRES_USER}
       POSTGRES_PASSWORD: \${POSTGRES_PASSWORD}
     ports:
-      - "5434:5432"
+      - "127.0.0.1:\${DB_HOST_PORT:-5434}:5432"
     volumes:
       - gss_pgdata:/var/lib/postgresql/data
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
@@ -273,6 +282,12 @@ upstream platform_api { server api_platform:8000; }
 upstream platform_ui  { server nextjs_platform:3000; }
 server {
     listen 80;
+    server_tokens off;
+    add_header X-Frame-Options "DENY" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "0" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Permissions-Policy "geolocation=(), camera=(), microphone=(), payment=()" always;
     client_max_body_size 50M;
     location /api/          { proxy_pass http://platform_api; proxy_set_header Host \$host; proxy_set_header X-Real-IP \$remote_addr; proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for; proxy_set_header X-Forwarded-Proto ${_forwarded_proto_value}; }
     location /healthz        { proxy_pass http://platform_api; proxy_set_header Host \$host; }
@@ -287,8 +302,15 @@ upstream recipient_api { server api_recipient:8000; }
 upstream recipient_ui  { server nextjs_recipient:3000; }
 server {
     listen 80;
+    server_tokens off;
+    add_header X-Frame-Options "DENY" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "0" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Permissions-Policy "geolocation=(), camera=(), microphone=(), payment=()" always;
     client_max_body_size 50M;
     location /api/          { proxy_pass http://recipient_api; proxy_set_header Host \$host; proxy_set_header X-Real-IP \$remote_addr; proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for; proxy_set_header X-Forwarded-Proto ${_forwarded_proto_value}; }
+    location /healthz        { proxy_pass http://recipient_api; proxy_set_header Host \$host; }
     location /api/docs       { return 404; }
     location /openapi.json   { return 404; }
     location /               { proxy_pass http://recipient_ui;  proxy_set_header Host \$host; proxy_set_header X-Real-IP \$remote_addr; proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for; proxy_set_header X-Forwarded-Proto ${_forwarded_proto_value}; }
@@ -366,6 +388,17 @@ POSTGRES_DB=$(grep '^POSTGRES_DB=' "${ENV_FILE}" 2>/dev/null \
 info "Current version: ${CURRENT_VERSION}"
 info "Install dir:     ${INSTALL_DIR}"
 
+# Load saved credentials if present
+GHCR_CREDS_FILE="${INSTALL_DIR}/.ghcr_creds"
+if [[ -f "${GHCR_CREDS_FILE}" ]]; then
+  # shellcheck source=/dev/null
+  source "${GHCR_CREDS_FILE}" 2>/dev/null || true
+fi
+if [[ -z "${GHCR_TOKEN:-}" && -f "${ENV_FILE}" ]]; then
+  GHCR_TOKEN=$(grep '^GHCR_TOKEN=' "${ENV_FILE}" 2>/dev/null | cut -d= -f2- | tr -d "'\" " || echo "")
+  GHCR_USERNAME=$(grep '^GHCR_USERNAME=' "${ENV_FILE}" 2>/dev/null | cut -d= -f2- | tr -d "'\" " || echo "")
+fi
+
 step "── Step 1/8: Resolve target version"
 
 FORCE=false
@@ -388,6 +421,26 @@ if [[ -n "${TARGET_ARG}" ]]; then
   TARGET_VERSION="${TARGET_ARG#v}"
   info "Target version specified: ${TARGET_VERSION}"
 else
+  # Prompt early if credentials missing so private GitHub releases/tags can be queried
+  if [[ -z "${GHCR_TOKEN:-}" ]]; then
+    echo -e "  ${YELLOW}[INFO]${RESET} GitHub credentials required to query releases from private repo ${GITHUB_REPO}."
+    while [[ -z "${GHCR_USERNAME:-}" ]]; do
+      read -rp "$(echo -e "  ${BOLD}GitHub username (GHCR_USERNAME): ${RESET}")" GHCR_USERNAME
+      GHCR_USERNAME=$(echo "${GHCR_USERNAME}" | xargs)
+    done
+    while [[ -z "${GHCR_TOKEN:-}" ]]; do
+      read -rsp "$(echo -e "  ${BOLD}GitHub PAT with read:packages scope (GHCR_TOKEN): ${RESET}")" GHCR_TOKEN
+      echo ""
+      GHCR_TOKEN=$(echo "${GHCR_TOKEN}" | xargs)
+    done
+    export GHCR_USERNAME GHCR_TOKEN
+    cat > "${GHCR_CREDS_FILE}" <<CREDS
+GHCR_USERNAME="${GHCR_USERNAME}"
+GHCR_TOKEN="${GHCR_TOKEN}"
+CREDS
+    chmod 600 "${GHCR_CREDS_FILE}"
+  fi
+
   info "Fetching latest stable release from GitHub..."
   _curl_auth=()
   [[ -n "${GHCR_TOKEN:-}" ]] && _curl_auth=(-H "Authorization: Bearer ${GHCR_TOKEN}")
@@ -399,6 +452,21 @@ else
     | sed 's/.*"tag_name": "\(.*\)".*/\1/' \
     | tr -d '[:space:]' \
     | sed 's/^v//' || echo "")
+
+  # Fallback to tags API if releases API is empty
+  if [[ -z "${TARGET_VERSION}" || ! "${TARGET_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    TARGET_VERSION=$(curl -fsSL --connect-timeout 10 \
+      -H "Accept: application/vnd.github+json" \
+      "${_curl_auth[@]}" \
+      "https://api.github.com/repos/${GITHUB_REPO}/tags" 2>/dev/null \
+      | grep '"name"' \
+      | sed 's/.*"name": "\(.*\)".*/\1/' \
+      | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+$' \
+      | head -1 \
+      | tr -d '[:space:]' \
+      | sed 's/^v//' || echo "")
+  fi
+
   if [[ -z "${TARGET_VERSION}" || ! "${TARGET_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     error "Could not resolve latest release. Specify manually: sudo ./upgrade.sh 2.5.0"
   fi
@@ -457,6 +525,14 @@ if [[ -z "${GHCR_TOKEN:-}" ]]; then
 fi
 [[ -z "${GHCR_USERNAME}" || -z "${GHCR_TOKEN}" ]] && error "GHCR credentials are required."
 
+if [[ ! -f "${GHCR_CREDS_FILE}" ]]; then
+  cat > "${GHCR_CREDS_FILE}" <<CREDS
+GHCR_USERNAME="${GHCR_USERNAME}"
+GHCR_TOKEN="${GHCR_TOKEN}"
+CREDS
+  chmod 600 "${GHCR_CREDS_FILE}"
+fi
+
 echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${GHCR_USERNAME}" --password-stdin \
   || error "GHCR login failed. Check credentials."
 success "Logged in to GHCR as ${GHCR_USERNAME}."
@@ -500,18 +576,9 @@ step "── Step 5/8: Pull new images (${TARGET_VERSION})"
 _pull_failed=false
 for img in "${IMAGES[@]}"; do
   info "  Pulling ${img}:${TARGET_VERSION}..."
-  _pulled=false
-  for ns in "${NAMESPACE}" "anandprabhusk" "kisa-ops"; do
-    if docker pull "${REGISTRY}/${ns}/${img}:${TARGET_VERSION}"; then
-      if [[ "${ns}" != "${NAMESPACE}" ]]; then
-        docker tag "${REGISTRY}/${ns}/${img}:${TARGET_VERSION}" "${REGISTRY}/${NAMESPACE}/${img}:${TARGET_VERSION}"
-      fi
-      _pulled=true
-      success "  Pulled ${img}:${TARGET_VERSION} (from ${ns})"
-      break
-    fi
-  done
-  if [[ "${_pulled}" == "false" ]]; then
+  if docker pull "${REGISTRY}/${NAMESPACE}/${img}:${TARGET_VERSION}"; then
+    success "  Pulled ${img}:${TARGET_VERSION}"
+  else
     warn "  Failed to pull ${img}:${TARGET_VERSION}"
     _pull_failed=true
     break
@@ -812,6 +879,12 @@ upstream platform_api { server api_platform:8000; }
 upstream platform_ui  { server nextjs_platform:3000; }
 server {
     listen 80;
+    server_tokens off;
+    add_header X-Frame-Options "DENY" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "0" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Permissions-Policy "geolocation=(), camera=(), microphone=(), payment=()" always;
     client_max_body_size 50M;
     location /api/          { proxy_pass http://platform_api; proxy_set_header Host \$host; proxy_set_header X-Real-IP \$remote_addr; proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for; proxy_set_header X-Forwarded-Proto ${_proto}; }
     location /healthz        { proxy_pass http://platform_api; proxy_set_header Host \$host; }
@@ -826,8 +899,15 @@ upstream recipient_api { server api_recipient:8000; }
 upstream recipient_ui  { server nextjs_recipient:3000; }
 server {
     listen 80;
+    server_tokens off;
+    add_header X-Frame-Options "DENY" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "0" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Permissions-Policy "geolocation=(), camera=(), microphone=(), payment=()" always;
     client_max_body_size 50M;
     location /api/          { proxy_pass http://recipient_api; proxy_set_header Host \$host; proxy_set_header X-Real-IP \$remote_addr; proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for; proxy_set_header X-Forwarded-Proto ${_proto}; }
+    location /healthz        { proxy_pass http://recipient_api; proxy_set_header Host \$host; }
     location /api/docs       { return 404; }
     location /openapi.json   { return 404; }
     location /               { proxy_pass http://recipient_ui;  proxy_set_header Host \$host; proxy_set_header X-Real-IP \$remote_addr; proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for; proxy_set_header X-Forwarded-Proto ${_proto}; }

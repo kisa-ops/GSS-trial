@@ -24,14 +24,8 @@ for IMAGE in "${ALL_IMAGES[@]}"; do
   if docker pull "${IMAGE}"; then
     success "  ${IMAGE}"
   else
-    FALLBACK_IMAGE=$(echo "${IMAGE}" | sed "s#/kisa-ops/#/anandprabhusk/#")
-    if [[ "${IMAGE}" != "${FALLBACK_IMAGE}" ]] && docker pull "${FALLBACK_IMAGE}"; then
-      docker tag "${FALLBACK_IMAGE}" "${IMAGE}"
-      success "  ${IMAGE} (via fallback)"
-    else
-      warn "  Failed to pull: ${IMAGE}"
-      PULL_FAILED+=("${IMAGE}")
-    fi
+    warn "  Failed to pull: ${IMAGE}"
+    PULL_FAILED+=("${IMAGE}")
   fi
 done
 echo ""

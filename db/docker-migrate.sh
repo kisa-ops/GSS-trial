@@ -124,6 +124,21 @@ ALTER TABLE gss_platform.users ALTER COLUMN hashed_password DROP NOT NULL;
 CREATE INDEX IF NOT EXISTS ix_users_auth_provider ON gss_platform.users (auth_provider);
 CREATE INDEX IF NOT EXISTS ix_users_external_id ON gss_platform.users (external_id);
 
+-- ── Password & TOTP lockout columns (C-5) ─────────────────────────────────
+ALTER TABLE gss_platform.users ADD COLUMN IF NOT EXISTS failed_password_attempts INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE gss_platform.users ADD COLUMN IF NOT EXISTS password_locked_until TIMESTAMPTZ;
+ALTER TABLE gss_platform.users ADD COLUMN IF NOT EXISTS failed_totp_attempts INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE gss_platform.users ADD COLUMN IF NOT EXISTS totp_locked_until TIMESTAMPTZ;
+
+-- ── Revoked tokens blocklist (H-8) ─────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS gss_platform.revoked_tokens (
+    jti         VARCHAR(64) PRIMARY KEY,
+    expires_at  TIMESTAMPTZ NOT NULL,
+    revoked_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS ix_revoked_tokens_expires_at ON gss_platform.revoked_tokens (expires_at);
+
+
 -- ── gss_platform.role_definitions  (models/role_definition.py) ────────────
 CREATE TABLE IF NOT EXISTS gss_platform.role_definitions (
     id                     SERIAL      PRIMARY KEY,
