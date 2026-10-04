@@ -16,7 +16,7 @@ _resolve_version() {
   if [[ -n "${tag}" && "${tag}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     echo "${tag}"
   else
-    echo "2.1.42"
+    echo "2.1.43"
   fi
 }
 
