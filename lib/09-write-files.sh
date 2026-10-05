@@ -289,11 +289,36 @@ server {
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     add_header Permissions-Policy "geolocation=(), camera=(), microphone=(), payment=()" always;
     client_max_body_size 50M;
-    location /api/          { proxy_pass http://platform_api; proxy_set_header Host \$host; proxy_set_header X-Real-IP \$remote_addr; proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for; proxy_set_header X-Forwarded-Proto ${_forwarded_proto_value}; }
+
+    # Real IP resolution from trusted reverse proxies & Docker bridge networks
+    set_real_ip_from 127.0.0.1;
+    set_real_ip_from 10.0.0.0/8;
+    set_real_ip_from 172.16.0.0/12;
+    set_real_ip_from 192.168.0.0/16;
+    real_ip_header X-Forwarded-For;
+    real_ip_recursive on;
+
+    location /api/ {
+        proxy_pass         http://platform_api;
+        proxy_http_version 1.1;
+        proxy_set_header   Host              \$host;
+        proxy_set_header   X-Real-IP         \$remote_addr;
+        proxy_set_header   X-Forwarded-For   \$proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto ${_forwarded_proto_value};
+        proxy_set_header   CF-Connecting-IP  \$http_cf_connecting_ip;
+    }
     location /healthz        { proxy_pass http://platform_api; proxy_set_header Host \$host; }
     location /api/docs       { return 404; }
     location /openapi.json   { return 404; }
-    location /               { proxy_pass http://platform_ui;  proxy_set_header Host \$host; proxy_set_header X-Real-IP \$remote_addr; proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for; proxy_set_header X-Forwarded-Proto ${_forwarded_proto_value}; }
+    location / {
+        proxy_pass         http://platform_ui;
+        proxy_http_version 1.1;
+        proxy_set_header   Host              \$host;
+        proxy_set_header   X-Real-IP         \$remote_addr;
+        proxy_set_header   X-Forwarded-For   \$proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto ${_forwarded_proto_value};
+        proxy_set_header   CF-Connecting-IP  \$http_cf_connecting_ip;
+    }
 }
 NGINXEOF
 
@@ -309,11 +334,36 @@ server {
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     add_header Permissions-Policy "geolocation=(), camera=(), microphone=(), payment=()" always;
     client_max_body_size 50M;
-    location /api/          { proxy_pass http://recipient_api; proxy_set_header Host \$host; proxy_set_header X-Real-IP \$remote_addr; proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for; proxy_set_header X-Forwarded-Proto ${_forwarded_proto_value}; }
+
+    # Real IP resolution from trusted reverse proxies & Docker bridge networks
+    set_real_ip_from 127.0.0.1;
+    set_real_ip_from 10.0.0.0/8;
+    set_real_ip_from 172.16.0.0/12;
+    set_real_ip_from 192.168.0.0/16;
+    real_ip_header X-Forwarded-For;
+    real_ip_recursive on;
+
+    location /api/ {
+        proxy_pass         http://recipient_api;
+        proxy_http_version 1.1;
+        proxy_set_header   Host              \$host;
+        proxy_set_header   X-Real-IP         \$remote_addr;
+        proxy_set_header   X-Forwarded-For   \$proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto ${_forwarded_proto_value};
+        proxy_set_header   CF-Connecting-IP  \$http_cf_connecting_ip;
+    }
     location /healthz        { proxy_pass http://recipient_api; proxy_set_header Host \$host; }
     location /api/docs       { return 404; }
     location /openapi.json   { return 404; }
-    location /               { proxy_pass http://recipient_ui;  proxy_set_header Host \$host; proxy_set_header X-Real-IP \$remote_addr; proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for; proxy_set_header X-Forwarded-Proto ${_forwarded_proto_value}; }
+    location / {
+        proxy_pass         http://recipient_ui;
+        proxy_http_version 1.1;
+        proxy_set_header   Host              \$host;
+        proxy_set_header   X-Real-IP         \$remote_addr;
+        proxy_set_header   X-Forwarded-For   \$proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto ${_forwarded_proto_value};
+        proxy_set_header   CF-Connecting-IP  \$http_cf_connecting_ip;
+    }
 }
 NGINXEOF
 success "Nginx configs written."
@@ -353,6 +403,44 @@ success() { echo -e "${GREEN}[OK]${RESET}    $*"; }
 warn()    { echo -e "${YELLOW}[WARN]${RESET}  $*"; }
 error()   { echo -e "${RED}[ERROR]${RESET} $*" >&2; exit 1; }
 step()    { echo -e "\n${BOLD}$*${RESET}"; }
+
+show_help() {
+  echo ""
+  echo -e "${BOLD}${CYAN}╔$(printf '═%.0s' {1..62})╗${RESET}"
+  echo -e "${BOLD}${CYAN}║      GoSecureShare — Safe Upgrade Utility                  ║${RESET}"
+  echo -e "${BOLD}${CYAN}╚$(printf '═%.0s' {1..62})╝${RESET}"
+  echo ""
+  echo -e "${BOLD}USAGE:${RESET}"
+  echo -e "  sudo ./upgrade.sh [VERSION] [OPTIONS]"
+  echo ""
+  echo -e "${BOLD}ARGUMENTS:${RESET}"
+  echo -e "  ${CYAN}[VERSION]${RESET}           Target SemVer version to deploy (e.g. 2.1.44 or v2.1.44)"
+  echo -e "                      If omitted, automatically queries and upgrades to latest stable release."
+  echo ""
+  echo -e "${BOLD}OPTIONS:${RESET}"
+  echo -e "  ${CYAN}-f, --force${RESET}         Force re-pull and re-deploy current or specified version"
+  echo -e "  ${CYAN}-c, --check${RESET}         Check GitHub Releases for new updates without upgrading"
+  echo -e "  ${CYAN}-h, --help${RESET}          Show this help reference and exit"
+  echo ""
+  echo -e "${BOLD}EXAMPLES:${RESET}"
+  echo -e "  sudo ./upgrade.sh                # Auto-upgrade to latest release"
+  echo -e "  sudo ./upgrade.sh 2.1.44         # Upgrade to specific version"
+  echo -e "  sudo ./upgrade.sh --check        # Check if newer version is available"
+  echo -e "  sudo ./upgrade.sh --force        # Force re-deploy current version"
+  echo -e "  sudo ./upgrade.sh 2.1.44 --force # Force re-deploy specific version"
+  echo -e "  ./upgrade.sh --help              # View this help reference"
+  echo ""
+  exit 0
+}
+
+# Pre-parse help flags before requiring root or checking environment
+for _check_arg in "$@"; do
+  case "${_check_arg}" in
+    -h|--help|help)
+      show_help
+      ;;
+  esac
+done
 
 [[ $EUID -ne 0 ]] && error "Please run as root: sudo ./upgrade.sh"
 
@@ -402,12 +490,22 @@ fi
 step "── Step 1/8: Resolve target version"
 
 FORCE=false
+CHECK_ONLY=false
 TARGET_ARG=""
 
 for _arg in "$@"; do
   case "${_arg}" in
+    -h|--help|help)
+      show_help
+      ;;
     -f|--force)
       FORCE=true
+      ;;
+    -c|--check)
+      CHECK_ONLY=true
+      ;;
+    -*)
+      error "Unknown option: '${_arg}'. Run './upgrade.sh --help' for usage."
       ;;
     *)
       if [[ -z "${TARGET_ARG}" ]]; then
@@ -475,6 +573,20 @@ fi
 
 [[ ! "${TARGET_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] && \
   error "Invalid version format: '${TARGET_VERSION}'. Expected x.y.z (e.g. 2.5.0)"
+
+if [[ "${CHECK_ONLY}" == "true" ]]; then
+  echo ""
+  echo -e "  ${BOLD}Release Check Summary:${RESET}"
+  echo -e "    Current installed version : ${YELLOW}${CURRENT_VERSION}${RESET}"
+  echo -e "    Target release version    : ${GREEN}${TARGET_VERSION}${RESET}"
+  if [[ "${CURRENT_VERSION}" == "${TARGET_VERSION}" ]]; then
+    echo -e "    Status                    : ${GREEN}[UP TO DATE]${RESET} You are running the latest version."
+  else
+    echo -e "    Status                    : ${CYAN}[UPDATE AVAILABLE]${RESET} Run 'sudo ./upgrade.sh' to upgrade."
+  fi
+  echo ""
+  exit 0
+fi
 
 if [[ "${CURRENT_VERSION}" == "${TARGET_VERSION}" && "${FORCE}" != "true" ]]; then
   info "Already on version ${TARGET_VERSION}. Nothing to do. (Pass --force to re-deploy current version)"
